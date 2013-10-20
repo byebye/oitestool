@@ -152,7 +152,7 @@ for test in "${tests[@]}"; do
   fi
 
   time=$(sed 's/ [0-9]*//' time.tmp)
-  timedecimal=$(echo "${time}" | awk 'begin { fs="[:.]" } ; { print ($1*60*1000 + $2*1000 + $3) }')
+  timedecimal=$(echo "${time}" | awk 'BEGIN { FS="[:.]" } ; { print ($1*60*1000 + $2*1000 + $3) }')
   if [[ $timedecimal > $maxtime ]]; then
     maxtime=$timedecimal
   fi
@@ -225,9 +225,7 @@ done
 
 printf "${white}%s\n"        "--------------------- Results -----------------------"
 if  $generate_out ; then
-  if [ $output_dir  = "" ]; then
-    output_dir="current directory"
-  fi
+  [ $output_dir  = "" ] && output_dir="current directory"
   printf "${yellow}%s\n"     "${count_generated} outputs generated into ${output_dir}"
 else
   printf "${lightgreen}%s\n" "OK:                                              ${count_ok}"
