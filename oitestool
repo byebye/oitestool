@@ -19,8 +19,8 @@ help() {
   printf " %s\t%s\n" "-i, --input-dir   " "Path to folder with input data (also output-dir unless specified)"
   printf " %s\t%s\n" "-o, --output-dir  " "Path to folder with output"
   printf " %s\t%s\n" "-g, --generate-out" "Instead checking answers, generate them"
-  printf " %s\t%s\n" "-t, --timeout"      "Set timeout in seconds, default: unlimited"
-  printf " %s\t%s\n" "-m, --memory-limit" "Set memory limit, default: unlimited"
+  printf " %s\t%s\n" "-t, --timeout     " "Set timeout in seconds, default: unlimited"
+  printf " %s\t%s\n" "-m, --memory-limit" "Set memory limit in MB, default: unlimited"
 }
 
 exit_error() {
@@ -133,6 +133,9 @@ if [ ${tests[0]} == "$input_dir*.in" ]; then
   exit_error "no tests found"
 fi
 
+printf "%s\n" '{ min=$1/(60*100); s=$1%(60*100)/100; ss=$1%100; printf("%d:%02d.%02d", min, s, ss) }' > time_format.tmp
+
+
 printf "${white}%s\n" "------------------- Testing $(basename $task) ---------------------"
 for test in "${tests[@]}"; do
 
@@ -152,13 +155,13 @@ for test in "${tests[@]}"; do
   fi
 
   time=$(sed 's/ [0-9]*//' time.tmp)
-  timedecimal=$(echo "${time}" | awk 'BEGIN { FS="[:.]" } ; { print ($1*60*1000 + $2*1000 + $3) }')
+  timedecimal=$(echo "${time}" | awk 'BEGIN { FS="[:.]" } ; { print ($1*60*100 + $2*100 + $3) }')
   if [[ $timedecimal > $maxtime ]]; then
     maxtime=$timedecimal
   fi
   totaltime=$(($totaltime + $timedecimal))
 
-  printf "${lightcyan}%s${lightmagenta}%s${white}%s" "${time}s " "${mem}MB " "--> "
+  printf "${lightcyan}%s${lightmagenta}%s${white}%s" "${time} " "${mem}MB " "--> "
 
   is_tle=false
   case "$exit_code" in
@@ -225,7 +228,9 @@ done
 
 printf "${white}%s\n"        "--------------------- Results -----------------------"
 if  $generate_out ; then
-  [ $output_dir  = "" ] && output_dir="current directory"
+  if [ "${output_dir}" = "" ]; then
+    output_dir="current directory"
+  fi
   printf "${yellow}%s\n"     "${count_generated} outputs generated into ${output_dir}"
 else
   printf "${lightgreen}%s\n" "OK:                                              ${count_ok}"
@@ -242,9 +247,9 @@ else
   printf "%s\n"              "   CANCELLED:                                    ${count_cancelled}"
   printf "${lightblue}%s\n"  "UNKNOWN:                                         ${count_unknown}"
 fi
-printf "${lightmagenta}%s\n" "Maximum memory used:                             ${maxmem}MB"
-printf "${lightcyan}%s\n"    "Maximum calculating time:                        $(($maxtime / 1000))s"
-printf "${lightcyan}%s\n"    "Total calculating time:                          $(($totaltime / 1000))s"
+printf "${lightmagenta}%s\n" "Maximum memory used:                         ${maxmem}MB"
+printf "${lightcyan}%s\n"    "Maximum calculating time:                    $(echo $maxtime | awk -f time_format.tmp)"
+printf "${lightcyan}%s\n"    "Total calculating time:                      $(echo $totaltime | awk -f time_format.tmp)"
 printf "${white}%s\n"        "-----------------------------------------------------"
 
 rm -f *.tmp
