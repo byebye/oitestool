@@ -16,10 +16,10 @@ help() {
   printf "%s\n"   "Options:"
   printf " %s\t%s\n" "-h, --help        " "Show this help"
   printf " %s\t%s\n" "-b, --binary      " "Test binary file without compiling source"
-  printf " %s\t%s\n" "-i, --input-dir   " "Path to folder with input data (also output-dir unless specified)"
+  printf " %s\t%s\n" "-i, --input-dir   " "Path to folder with input data (also sets output dir unless specified)"
   printf " %s\t%s\n" "-o, --output-dir  " "Path to folder with output"
   printf " %s\t%s\n" "-g, --generate-out" "Instead checking answers, generate them"
-  printf " %s\t%s\n" "-t, --timeout     " "Set timeout in seconds, default: unlimited"
+  printf " %s\t%s\n" "-t, --time-limit  " "Set time limit in seconds, default: unlimited"
   printf " %s\t%s\n" "-m, --memory-limit" "Set memory limit in MB, default: unlimited"
 }
 
@@ -28,9 +28,15 @@ exit_error() {
   exit 1
 }
 
+is_integer() {
+  case $1 in
+    '' | *[!0-9]* | 0[0-9]*) echo "false" ;;
+    *) echo "true" ;;
+  esac
+}
+
 [ ! -f "/usr/bin/time" ] && exit_error "/usr/bin/time command not found - not installed?"
 [ ! -f "/usr/bin/awk" ]  && exit_error "/usr/bin/awk command not found - not installed?"
-[ ! -f "/usr/bin/bc" ]   && exit_error "/usr/bin/bc command not found - not installed?"
 
 input_dir=""
 output_dir=""
@@ -39,6 +45,8 @@ generate_out=false
 time_limit="unlimited"
 memory_limit="unlimited"
 task=""
+
+int_regex="^[0-9]+$"
 
 while [ "$1" != "" ]; do
   case "$1" in
@@ -75,10 +83,16 @@ while [ "$1" != "" ]; do
     "--timeout"|"-t")
       shift
       time_limit="$1"
+      if [ $(is_integer $time_limit) = "false" ]; then
+        exit_error "time limit must be an integer"
+      fi
       ;;
     "--memory-limit"|"-m")
       shift
-      memory_limit="$1"
+      if [ $(is_integer "$1") = "false" ]; then
+        exit_error "memory limit must be an integer"
+      fi
+      memory_limit=$(($1*1024))
       ;;
     *)
       task="$1"
@@ -149,8 +163,8 @@ for test in "${tests[@]}"; do
 
   printf "%s\n" "$(sed '/Command/d' time.tmp)" > time.tmp
 
-  mem=$(cat time.tmp | awk '{ printf "%.2f", ($2 / 1024) }')
-  if [ $(printf "%s\n" "$mem > $maxmem" | bc) ]; then
+  mem=$(cat time.tmp | awk '{ print $2 }')
+  if [ $mem -gt $maxmem ]; then
     maxmem=$mem
   fi
 
@@ -161,7 +175,7 @@ for test in "${tests[@]}"; do
   fi
   totaltime=$(($totaltime + $timedecimal))
 
-  printf "${lightcyan}%s${lightmagenta}%s${white}%s" "${time} " "${mem}MB " "--> "
+  printf "${lightcyan}%s${lightmagenta}%s${white}%s" "${time} " "$((${mem}/1024))MB " "--> "
 
   is_tle=false
   case "$exit_code" in
@@ -204,10 +218,10 @@ for test in "${tests[@]}"; do
     ((++count_fail))
     ((++count_tle))
     printf "${lightred}%s\n" "time limit exceeded"
-  elif [ $([ $memory_limit != "unlimited" ] && printf "%s\n" "$mem > $memory_limit" | bc) == 1 ]; then
+  elif [[ "${memory_limit}" != "unlimited" && $mem -gt $memory_limit ]]; then
     ((++count_fail))
     ((++count_mem))
-    printf "${lightred}%s " "memory limit (${memory_limit}MB) exceeded"
+    printf "${lightred}%s\n" "memory limit ($(($memory_limit/1024))MB) exceeded"
   elif [ ! -f "${output_dir}${test}.out" ]; then
     ((++count_unknown))
     printf "${lightblue}%s\n" "unknown (${output_dir##\./}${test}.out does not exist)"
@@ -248,7 +262,7 @@ else
 fi
 maxtime=$(echo $maxtime | awk -f time_format.tmp)
 totaltime=$(echo $totaltime | awk -f time_format.tmp)
-printf "${lightmagenta}%s%30s\n" "Maximum memory used:"      "${maxmem}MB"
+printf "${lightmagenta}%s%30s\n" "Maximum memory used:"      "$((${maxmem}/1024))MB"
 printf "${lightcyan}%s%25s\n"    "Maximum calculating time:" "${maxtime}"
 printf "${lightcyan}%s%27s\n"    "Total calculating time:"   "${totaltime}"
 printf "${white}%s\n"            "--------------------------------------------------"
