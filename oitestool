@@ -1,0 +1,238 @@
+#!/bin/bash
+NORMAL="\033[0m"
+WHITE="\033[1;37m"
+LIGHTRED="\033[1;31m"
+LIGHTGREEN="\033[1;32m"
+LIGHTCYAN="\e[1;36m"
+LIGHTMAGENTA="\e[1;35m"
+LIGHTBLUE="\e[1;34m"
+YELLOW="\e[1;33m"
+
+help() {
+  printf "%s\n" "${0##*/} [OPTIONS] taskname"
+  printf "%s\n"   "Options:"
+  printf " %s\t%s\n" "-h, --help        " "Show this help"
+  printf " %s\t%s\n" "-b, --binary      " "Test binary file without compiling source"
+  printf " %s\t%s\n" "-i, --input-dir   " "Path to folder with input data (also answers dir unless specified"
+  printf " %s\t%s\n" "-o, --output-dir  " "Path to folder with answers"
+  printf " %s\t%s\n" "-g, --generate-out" "Instead checking answers, generate them"
+  printf " %s\t%s\n" "-t, --timeout"      "Set timeout in seconds, default: unlimited"
+  printf " %s\t%s\n" "-m, --memory-limit" "Set memory limit, default: unlimited"
+}
+
+INPUT_DIR=""
+OUTPUT_DIR=""
+BINARY=false
+GENERATE_OUT=false
+TIME_LIMIT="unlimited"
+ULIMIT_T=$(ulimit -t)
+MEMORY_LIMIT="unlimited"
+task=""
+
+while [ "$1" != "" ]; do
+  case "$1" in
+    "--help"|"-h")
+      help
+      exit
+      ;;
+    "--binary"|"-b")
+      BINARY=true
+      ;;
+    "--input-dir"|"-i")
+      shift
+      INPUT_DIR="$1"
+      if [ ! -d "${INPUT_DIR}" ]; then
+        printf "%s\n" "${INPUT_DIR} - input directory does not exist"
+        exit 1
+      fi
+      if [ "${INPUT_DIR##*/}" != "" ]; then
+        INPUT_DIR="${INPUT_DIR}/"
+      fi
+      ;;
+    "--output-dir"|"-o")
+      shift
+      OUTPUT_DIR="$1"
+      if [ ! -d "${OUTPUT_DIR}" ]; then
+        printf "%s\n" "${OUTPUT_DIR} - output directory does not exist"
+        exit 1
+      fi
+      if [ "${OUTPUT_DIR##*/}" != "" ]; then
+        OUTPUT_DIR="${OUTPUT_DIR}/"
+      fi
+      ;;
+    "--generate-out"|"-g")
+      GENERATE_OUT=true
+      ;;
+    "--timeout"|"-t")
+      shift
+      TIME_LIMIT"$1"
+      ;;
+    "--memory-limit"|"-m")
+      shift
+      MEMORY_LIMIT="$1"
+      ;;
+    *)
+      task="$1"
+      ;;
+  esac
+  shift
+done
+
+if [ "${task}" = "" ]; then
+  printf "%s\n" "Task name missing"
+  exit 1
+fi
+
+if [ "${INPUT_DIR}" = "" ]; then
+  INPUT_DIR="./"
+fi
+if [ "${OUTPUT_DIR}" = "" ]; then
+  OUTPUT_DIR="${INPUT_DIR}"
+fi
+
+if $BINARY ; then
+  if [ -f "${task}" ]; then
+    printf "%s\n" "Testing earlier compiled task..."
+  else
+    printf "%s\n" "${task} - task binary file does not exist"
+    exit 1
+  fi
+elif [ ! -f "${task}.cpp" ]; then
+  printf "%s\n" "${task}.cpp - task source file does not exist"
+  exit 1
+elif [ ! -f Makefile ]; then
+  g++ -Wall -O2 -static -std=gnu++0x ${task}.cpp -o ${task}
+else
+  make ${task}
+fi
+
+MAXMEM=0
+MAXTIME=0
+TOTALTIME=0
+COUNT_GENERATED=0
+COUNT_OK=0
+COUNT_FAIL=0
+COUNT_TLE=0
+COUNT_ANS=0
+COUNT_MEM=0
+COUNT_RTE=0
+COUNT_CANCELLED=0
+COUNT_UNKNOWN=0
+
+printf "${WHITE}%s\n" "------------------- TESTING $(basename $task) ---------------------"
+
+for test in ${INPUT_DIR}*.in; do
+
+  test=${test%%.in}
+  test=$(basename $test)
+
+  printf "${WHITE}%s" "${test} "
+
+  
+  if [ "${TIME_LIMIT}" != "unlimited" ]; then
+   ulimit -St $TIME_LIMIT
+  fi
+  /usr/bin/time -f "%E %M" -o time.tmp sh -c "./${task} < ${INPUT_DIR}${test}.in > out.tmp 2> /dev/null" 2> /dev/null
+  EXIT_CODE=$?
+  ulimit -St $ULIMIT_T
+
+  printf "%s\n" "$(sed '/Command/d' time.tmp)" > time.tmp
+
+  MEM=$(cat time.tmp | awk '{ printf("%.2f", ($2 / 1024)) }')
+  if [[ $MEM > $MAXMEM ]]; then
+    MAXMEM=$MEM
+  fi
+
+  TIME=$(sed 's/ [0-9]*//' time.tmp)
+  TIMEDECIMAL=$(echo "${TIME}" | awk 'BEGIN { FS="[:.]" } ; { print ($1*60*1000 + $2*1000 + $3) }')
+  if [[ $TIMEDECIMAL > $MAXTIME ]]; then
+    MAXTIME=$TIMEDECIMAL
+  fi
+  TOTALTIME=$(($TOTALTIME + $TIMEDECIMAL))
+
+  printf "${LIGHTCYAN}%s${LIGHTMAGENTA}%s${WHITE}%s" "${TIME}s " "${MEM}MB " "--> "
+
+  IS_TLE=false
+  case "$EXIT_CODE" in
+    "0")
+      ;;
+    "124")
+      IS_TLE=true
+      ;;
+    "130"|"2")
+      ((++COUNT_CANCELLED))
+      printf "${LIGHTRED}%s\n" "CANCELLED (press Ctrl-| to interrupt whole script)" 
+      continue
+      ;;
+    "131"|"3")
+      exit 131
+      ;;
+    "136"|"8")
+      ((++COUNT_RTE))
+      printf "${LIGHTRED}%s\n" "FAIL (floating point exception - division by 0??)"
+      ;;
+    "139|11")
+      ((++COUNT_RTE))
+      printf "${LIGHTRED}%s\n" "FAIL (out of range invocation??)"
+      ;;
+    *)
+      ((++COUNT_RTE))
+      printf "${LIGHTRED}%s\n" "FAIL (exit code $EXIT_CODE)" 
+      continue
+      ;;
+  esac
+
+  if $GENERATE_OUT ; then
+    ((++COUNT_GENERATED))
+    cp out.tmp "${OUTPUT_DIR}${test}".out
+    printf "${YELLOW}%s\n" "out generated"
+  elif $IS_TLE ; then
+    ((++COUNT_FAIL))
+    ((++COUNT_TLE))
+    printf "${LIGHTRED}%s\n" "TIME LIMIT EXCEEDED"
+  elif [[ ("$MEMORY_LIMIT" != "unlimited") && ! $(printf "%s\n" "$MEM > $MEMORY_LIMIT" | bc) ]]; then
+      ((++COUNT_FAIL))
+      ((++COUNT_MEM))
+      printf "${LIGHTRED}%s\n" "MEMORY LIMIT (${MEMORY_LIMIT}MB) EXCEEDED"
+  elif [ ! -f "${OUTPUT_DIR}${test}.out" ]; then
+    ((++COUNT_UNKNOWN))
+    printf "${LIGHTBLUE}%s\n" "UNKNOWN (${OUTPUT_DIR##\./}${test}.out does not exist)"
+  else
+    diff <(sed -e '$a\' "${OUTPUT_DIR}${test}.out") <(sed -e '$a\' out.tmp) > /dev/null
+    if [ $? = 0 ]; then 
+      ((++COUNT_OK))
+      printf "${LIGHTGREEN}%s\n" "OK"
+    else
+      ((++COUNT_FAIL))
+      ((++COUNT_ANS))
+      printf "${LIGHTRED}%s\n" "WRONG ANSWER" 
+    fi
+  fi
+
+  printf "${NORMAL}" 
+done
+
+printf "${WHITE}%s\n"        "--------------------- RESULTS -----------------------"
+if  $GENERATE_OUT ; then
+  printf "${YELLOW}%s\n"     "${COUNT_GENERATED} outputs generated into ${OUTPUT_DIR}"
+else
+  printf "${LIGHTGREEN}%s\n" "OK:                                              ${COUNT_OK}"
+  printf "${LIGHTRED}%s\n"   "FAIL:                                            ${COUNT_FAIL}"
+  [ $COUNT_ANS -gt 0 ] && 
+  printf "%s\n"              "   ANS:                                          ${COUNT_ANS}"
+  [ $COUNT_TLE -gt 0 ] && 
+  printf "%s\n"              "   TLE:                                          ${COUNT_TLE}"
+  [ $COUNT_MEM -gt 0 ] && 
+  printf "%s\n"              "   MEM:                                          ${COUNT_MEM}"
+  [ $COUNT_RTE -gt 0 ] &&
+  printf "%s\n"              "   RTE:                                          ${COUNT_RTE}"
+  [ $COUNT_CANCELLED -gt 0 ] &&
+  printf "%s\n"              "   CANCELLED:                                    ${COUNT_CANCELLED}"
+  printf "${LIGHTBLUE}%s\n"  "UNKNOWN:                                         ${COUNT_UNKNOWN}"
+fi
+printf "${LIGHTMAGENTA}%s\n" "Maximum memory used:                             ${MAXMEM}MB"
+printf "${LIGHTCYAN}%s\n"    "Maximum calculating time:                        $(($MAXTIME / 1000))s"
+printf "${LIGHTCYAN}%s\n"    "Total calculating time:                          $(($TOTALTIME / 1000))s"
+printf "${WHITE}%s\n"        "-----------------------------------------------------"
+
+rm -f *.tmp
