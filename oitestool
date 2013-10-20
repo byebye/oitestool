@@ -21,6 +21,8 @@ help() {
   printf " %s\t%s\n" "-g, --generate-out" "Instead checking answers, generate them"
   printf " %s\t%s\n" "-t, --time-limit  " "Set time limit in seconds, default: unlimited"
   printf " %s\t%s\n" "-m, --memory-limit" "Set memory limit in MB, default: unlimited"
+  printf " %s\t%s\n" "-f, --test-files  " "Pass test files to be checked. (.in extension is required)"
+  printf " %s\t%s\n" "                  " "Format: \"test1 test2 test3 ...\", regex is also acceptable"
 }
 
 exit_error() {
@@ -45,8 +47,7 @@ generate_out=false
 time_limit="unlimited"
 memory_limit="unlimited"
 task=""
-
-int_regex="^[0-9]+$"
+test_files="*.in"
 
 while [ "$1" != "" ]; do
   case "$1" in
@@ -93,6 +94,13 @@ while [ "$1" != "" ]; do
         exit_error "memory limit must be an integer"
       fi
       memory_limit=$(($1*1024))
+      ;;
+    "--test-files"|"-f")
+      shift
+      test_files="$1"
+      if [ "${test_files%.in}" = "${test_files}" ]; then
+        exit_error ".in extension is requred"
+      fi
       ;;
     *)
       task="$1"
@@ -141,9 +149,9 @@ if [ "${time_limit}" != "unlimited" ]; then
   time_limit_cmd="timeout $time_limit"
 fi
 
-tests=($input_dir*.in)
+tests=($input_dir$test_files)
 
-if [ ${tests[0]} == "$input_dir*.in" ]; then
+if [[ ${tests[0]} = "$input_dir$test_files" && ! -f ${tests[0]} ]]; then
   exit_error "no tests found"
 fi
 
