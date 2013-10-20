@@ -123,7 +123,7 @@ count_cancelled=0
 count_unknown=0
 time_limit_cmd=""
 if [ "${time_limit}" != "unlimited" ]; then
-  [ ! -f "/usr/bin/timeout" ] && exit_error "in order to set time limit you need \'timeout\' command which is not found"
+  [ ! -f "/usr/bin/timeout" ] && exit_error "in order to set time limit you need 'timeout' command which is not found"
   time_limit_cmd="timeout $time_limit"
 fi
 
@@ -136,7 +136,7 @@ fi
 printf "%s\n" '{ min=$1/(60*100); s=$1%(60*100)/100; ss=$1%100; printf("%d:%02d.%02d", min, s, ss) }' > time_format.tmp
 
 
-printf "${white}%s\n" "------------------- Testing $(basename $task) ---------------------"
+printf "${white}%s\n" "------------------ Testing $(basename $task) -------------------"
 for test in "${tests[@]}"; do
 
   test=${test%%.in}
@@ -222,34 +222,35 @@ for test in "${tests[@]}"; do
       printf "${lightred}%s\n" "wrong answer" 
     fi
   fi
-
   printf "${normal}" 
 done
 
-printf "${white}%s\n"        "--------------------- Results -----------------------"
+printf "${white}%s\n"        "-------------------- Results ---------------------"
 if  $generate_out ; then
   if [ "${output_dir}" = "" ]; then
     output_dir="current directory"
   fi
   printf "${yellow}%s\n"     "${count_generated} outputs generated into ${output_dir}"
 else
-  printf "${lightgreen}%s\n" "OK:                                              ${count_ok}"
-  printf "${lightred}%s\n"   "FAIL:                                            ${count_fail}"
+  printf "${lightgreen}%s%47s\n" "OK:"      "${count_ok}"
+  printf "${lightred}%s%45s\n"   "FAIL:"    "${count_fail}"
   [ $count_ans -gt 0 ] && 
-  printf "%s\n"              "   ANS:                                          ${count_ans}"
+  printf "%s%43s\n"              " - ANS:"  "${count_ans}"
   [ $count_tle -gt 0 ] && 
-  printf "%s\n"              "   TLE:                                          ${count_tle}"
+  printf "%s%43s\n"              " - TLE:"  "${count_tle}"
   [ $count_mem -gt 0 ] && 
-  printf "%s\n"              "   MEM:                                          ${count_mem}"
+  printf "%s%43s\n"              " - MEM:"  "${count_mem}"
   [ $count_rte -gt 0 ] &&
-  printf "%s\n"              "   RTE:                                          ${count_rte}"
+  printf "%s%43s\n"              " - RTE:"  "${count_rte}"
   [ $count_cancelled -gt 0 ] &&
-  printf "%s\n"              "   CANCELLED:                                    ${count_cancelled}"
-  printf "${lightblue}%s\n"  "UNKNOWN:                                         ${count_unknown}"
+  printf "%s%37s\n"        "   CANCELLED:"  "${count_cancelled}"
+  printf "${lightblue}%s%42s\n" "UNKNOWN:"  "${count_unknown}"
 fi
-printf "${lightmagenta}%s\n" "Maximum memory used:                         ${maxmem}MB"
-printf "${lightcyan}%s\n"    "Maximum calculating time:                    $(echo $maxtime | awk -f time_format.tmp)"
-printf "${lightcyan}%s\n"    "Total calculating time:                      $(echo $totaltime | awk -f time_format.tmp)"
-printf "${white}%s\n"        "-----------------------------------------------------"
+maxtime=$(echo $maxtime | awk -f time_format.tmp)
+totaltime=$(echo $totaltime | awk -f time_format.tmp)
+printf "${lightmagenta}%s%30s\n" "Maximum memory used:"      "${maxmem}MB"
+printf "${lightcyan}%s%25s\n"    "Maximum calculating time:" "${maxtime}"
+printf "${lightcyan}%s%27s\n"    "Total calculating time:"   "${totaltime}"
+printf "${white}%s\n"            "--------------------------------------------------"
 
 rm -f *.tmp
