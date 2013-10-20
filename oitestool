@@ -1,4 +1,6 @@
 #!/bin/bash
+
+### Colors ###
 normal="\033[0m"
 white="\033[1;37m"
 red="\033[0;31m"
@@ -25,6 +27,10 @@ exit_error() {
   printf "${red}%s\n" "! Error: $1"
   exit 1
 }
+
+[ ! -f "/usr/bin/time" ] && exit_error "/usr/bin/time command not found - not installed?"
+[ ! -f "/usr/bin/awk" ]  && exit_error "/usr/bin/awk command not found - not installed?"
+[ ! -f "/usr/bin/bc" ]   && exit_error "/usr/bin/bc command not found - not installed?"
 
 input_dir=""
 output_dir=""
@@ -117,6 +123,7 @@ count_cancelled=0
 count_unknown=0
 time_limit_cmd=""
 if [ "${time_limit}" != "unlimited" ]; then
+  [ ! -f "/usr/bin/timeout" ] && exit_error "in order to set time limit you need \'timeout\' command which is not found"
   time_limit_cmd="timeout $time_limit"
 fi
 
