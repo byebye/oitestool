@@ -133,7 +133,7 @@ if [ ${tests[0]} == "$input_dir*.in" ]; then
   exit_error "no tests found"
 fi
 
-printf "%s\n" '{ min=$1/(60*100); s=$1%(60*100)/100; ss=$1%100; printf("%d:%02d.%02d", min, s, ss) }' > time_format.tmp
+printf "%s\n" '{ min=$1/6000; s=$1%6000/100; ss=$1%100; printf("%d:%02d.%02d", min, s, ss) }' > time_format.tmp
 
 
 printf "${white}%s\n" "------------------ Testing $(basename $task) -------------------"
@@ -149,14 +149,14 @@ for test in "${tests[@]}"; do
 
   printf "%s\n" "$(sed '/Command/d' time.tmp)" > time.tmp
 
-  mem=$(cat time.tmp | awk '{ printf("%.2f", ($2 / 1024)) }')
-  if [[ $mem > $maxmem ]]; then
+  mem=$(cat time.tmp | awk '{ printf "%.2f", ($2 / 1024) }')
+  if [ $(printf "%s\n" "$mem > $maxmem" | bc) ]; then
     maxmem=$mem
   fi
 
   time=$(sed 's/ [0-9]*//' time.tmp)
   timedecimal=$(echo "${time}" | awk 'BEGIN { FS="[:.]" } ; { print ($1*60*100 + $2*100 + $3) }')
-  if [[ $timedecimal > $maxtime ]]; then
+  if [ $timedecimal -gt $maxtime ]; then
     maxtime=$timedecimal
   fi
   totaltime=$(($totaltime + $timedecimal))
@@ -204,10 +204,10 @@ for test in "${tests[@]}"; do
     ((++count_fail))
     ((++count_tle))
     printf "${lightred}%s\n" "time limit exceeded"
-  elif [[ ("$memory_limit" != "unlimited") && ! $(printf "%s\n" "$mem > $memory_limit" | bc) ]]; then
-      ((++count_fail))
-      ((++count_mem))
-      printf "${lightred}%s\n" "memory limit (${memory_limit}MB) exceeded"
+  elif [ $([ $memory_limit != "unlimited" ] && printf "%s\n" "$mem > $memory_limit" | bc) == 1 ]; then
+    ((++count_fail))
+    ((++count_mem))
+    printf "${lightred}%s " "memory limit (${memory_limit}MB) exceeded"
   elif [ ! -f "${output_dir}${test}.out" ]; then
     ((++count_unknown))
     printf "${lightblue}%s\n" "unknown (${output_dir##\./}${test}.out does not exist)"
@@ -235,13 +235,13 @@ else
   printf "${lightgreen}%s%47s\n" "OK:"      "${count_ok}"
   printf "${lightred}%s%45s\n"   "FAIL:"    "${count_fail}"
   [ $count_ans -gt 0 ] && 
-  printf "%s%43s\n"              " - ANS:"  "${count_ans}"
+  printf "%s%43s\n"              "-> ANS:"  "${count_ans}"
   [ $count_tle -gt 0 ] && 
-  printf "%s%43s\n"              " - TLE:"  "${count_tle}"
+  printf "%s%43s\n"              "-> TLE:"  "${count_tle}"
   [ $count_mem -gt 0 ] && 
-  printf "%s%43s\n"              " - MEM:"  "${count_mem}"
+  printf "%s%43s\n"              "-> MEM:"  "${count_mem}"
   [ $count_rte -gt 0 ] &&
-  printf "%s%43s\n"              " - RTE:"  "${count_rte}"
+  printf "%s%43s\n"              "-> RTE:"  "${count_rte}"
   [ $count_cancelled -gt 0 ] &&
   printf "%s%37s\n"        "   CANCELLED:"  "${count_cancelled}"
   printf "${lightblue}%s%42s\n" "UNKNOWN:"  "${count_unknown}"
