@@ -41,6 +41,10 @@ float_div() {
   printf "%s\n" "$1 $2" | awk '{ printf "%.2f", $1 / $2 }'
 }
 
+ignore_multi_whitespaces() {
+  printf "%s\n" "$(awk '{printf "%s ", $0}' "$1" | sed -e 's/ \+/ /g;s/^ \+//g;$a\')"
+}
+
 [ ! -f "/usr/bin/time" ] && exit_error "/usr/bin/time command not found - not installed?"
 [ ! -f "/usr/bin/awk" ]  && exit_error "/usr/bin/awk command not found - not installed?"
 
@@ -239,7 +243,7 @@ for test in "${tests[@]}"; do
     ((++count_unknown))
     printf "${lightblue}%s\n" "unknown (${output_dir##\./}${test}.out does not exist)"
   else
-    diff <(sed -e '$a\' "${output_dir}${test}.out") <(sed -e '$a\' out.tmp) > /dev/null
+    diff <(ignore_multi_whitespaces "${output_dir}${test}.out") <(ignore_multi_whitespaces out.tmp) 2> /dev/null
     if [ $? = 0 ]; then 
       ((++count_ok))
       printf "${lightgreen}%s\n" "ok"
