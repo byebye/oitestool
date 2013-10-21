@@ -37,6 +37,10 @@ is_integer() {
   esac
 }
 
+float_div() {
+  printf "%s\n" "$1 $2" | awk '{ printf "%.2f", $1 / $2 }'
+}
+
 [ ! -f "/usr/bin/time" ] && exit_error "/usr/bin/time command not found - not installed?"
 [ ! -f "/usr/bin/awk" ]  && exit_error "/usr/bin/awk command not found - not installed?"
 
@@ -183,7 +187,7 @@ for test in "${tests[@]}"; do
   fi
   totaltime=$(($totaltime + $timedecimal))
 
-  printf "${lightcyan}%s${lightmagenta}%s${white}%s" "${time} " "$((${mem}/1024))MB " "--> "
+  printf "${lightcyan}%s${lightmagenta}%s${white}%s" "${time} " "$(float_div $mem 1024)MB " "--> "
 
   is_tle=false
   case "$exit_code" in
@@ -199,6 +203,7 @@ for test in "${tests[@]}"; do
       ;;
     "131")
       printf "${red}%s\n" "Script interrupted"
+      rm *.tmp
       exit 131
       ;;
     "136")
@@ -270,9 +275,11 @@ else
 fi
 maxtime=$(echo $maxtime | awk -f time_format.tmp)
 totaltime=$(echo $totaltime | awk -f time_format.tmp)
-printf "${lightmagenta}%s%30s\n" "Maximum memory used:"      "$((${maxmem}/1024))MB"
+printf "${lightmagenta}%s%30s\n" "Maximum memory used:"      "$(float_div $maxmem 1024)MB"
 printf "${lightcyan}%s%25s\n"    "Maximum calculating time:" "${maxtime}"
 printf "${lightcyan}%s%27s\n"    "Total calculating time:"   "${totaltime}"
 printf "${white}%s\n"            "--------------------------------------------------"
 
 rm -f *.tmp
+
+exit 0
