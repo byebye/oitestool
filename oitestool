@@ -46,7 +46,6 @@ ignore_multi_whitespaces() {
   printf "%s\n" "$(awk '{printf "%s ", $0}' "$1" | sed -e 's/ \+/ /g;s/^ \+//g;$a\')"
 }
 
-save_failed=false
 save_failed_test() {
   if $save_failed ; then
     printf "%s - %s\n" "$1" "$2" >> failed.txt
@@ -55,6 +54,7 @@ save_failed_test() {
 
 [ ! -f "/usr/bin/time" ] && exit_error "/usr/bin/time command not found - not installed?"
 [ ! -f "/usr/bin/awk" ]  && exit_error "/usr/bin/awk command not found - not installed?"
+[ ! -f "/usr/bin/sed" ]  && exit_error "/usr/bin/sed command not found - not installed?"
 
 input_dir=""
 output_dir=""
@@ -64,6 +64,7 @@ time_limit="unlimited"
 memory_limit="unlimited"
 task=""
 test_files="*.in"
+save_failed=false
 
 while [ "$1" != "" ]; do
   case "$1" in
