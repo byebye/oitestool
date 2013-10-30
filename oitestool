@@ -23,6 +23,7 @@ help() {
   printf " %s\t%s\n" "-m, --memory-limit" "Set memory limit in MB, default: unlimited"
   printf " %s\t%s\n" "-f, --test-files  " "Pass test files to be checked. (.in extension is required)"
   printf " %s\t%s\n" "                  " "Format: \"test1 test2 test3 ...\", regex is also acceptable"
+  printf " %s\t%s\n" "-s, --save-failed " "Save names of failed tests to file 'failed.txt'"
 }
 
 exit_error() {
@@ -43,6 +44,13 @@ float_div() {
 
 ignore_multi_whitespaces() {
   printf "%s\n" "$(awk '{printf "%s ", $0}' "$1" | sed -e 's/ \+/ /g;s/^ \+//g;$a\')"
+}
+
+save_failed=false
+save_failed_test() {
+  if $save_failed ; then
+    printf "%s - %s\n" "$1" "$2" >> failed.txt
+  fi
 }
 
 [ ! -f "/usr/bin/time" ] && exit_error "/usr/bin/time command not found - not installed?"
@@ -109,6 +117,9 @@ while [ "$1" != "" ]; do
       if [ "${test_files%.in}" = "${test_files}" ]; then
         exit_error ".in extension is requred"
       fi
+      ;;
+    "--save-failed"|"-s")
+      save_failed=true
       ;;
     *)
       task="$1"
@@ -213,16 +224,19 @@ for test in "${tests[@]}"; do
     "136")
       ((++count_rte))
       printf "${lightred}%s\n" "fail (floating point exception - division by 0??)"
+      save_failed_test "${test}" "RTE"
       continue
       ;;
     "139")
       ((++count_rte))
       printf "${lightred}%s\n" "fail (exit code $exit_code - out of range invocation??)"
+      save_failed_test "${test}" "RTE"
       continue
       ;;
     *)
       ((++count_rte))
       printf "${lightred}%s\n" "fail (exit code $exit_code)" 
+      save_failed_test "${test}" "RTE"
       continue
       ;;
   esac
@@ -235,22 +249,25 @@ for test in "${tests[@]}"; do
     ((++count_fail))
     ((++count_tle))
     printf "${lightred}%s\n" "time limit exceeded"
+    save_failed_test "${test}" "TLE"
   elif [[ "${memory_limit}" != "unlimited" && $mem -gt $memory_limit ]]; then
     ((++count_fail))
     ((++count_mem))
     printf "${lightred}%s\n" "memory limit ($(($memory_limit/1024))MB) exceeded"
+    save_failed_test "${test}" "MEM"
   elif [ ! -f "${output_dir}${test}.out" ]; then
     ((++count_unknown))
     printf "${lightblue}%s\n" "unknown (${output_dir##\./}${test}.out does not exist)"
   else
-    diff <(ignore_multi_whitespaces "${output_dir}${test}.out") <(ignore_multi_whitespaces out.tmp) 2> /dev/null
+    diff <(ignore_multi_whitespaces "${output_dir}${test}.out") <(ignore_multi_whitespaces out.tmp) > /dev/null
     if [ $? = 0 ]; then 
       ((++count_ok))
       printf "${lightgreen}%s\n" "ok"
     else
       ((++count_fail))
       ((++count_ans))
-      printf "${lightred}%s\n" "wrong answer" 
+      printf "${lightred}%s\n" "wrong answer"
+      save_failed_test "${test}" "ANS"
     fi
   fi
   printf "${normal}" 
