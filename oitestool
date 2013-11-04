@@ -16,11 +16,17 @@ help() {
   printf "%s\n"   "Options:"
   printf " %s\t%s\n" "-h, --help        " "Show this help"
   printf " %s\t%s\n" "-b, --binary      " "Test binary file without compiling source"
-  printf " %s\t%s\n" "-c, --check-by    " "Check answers by the given program:"
-  printf " %s\t%s\n" "                  " "* exit status = 0 -> answer correct"
-  printf " %s\t%s\n" "                  " "* out.tmp -> given answer"
-  printf " %s\t%s\n" "                  " "* in.tmp  -> current input"
-  printf " %s\t%s\n" "                  " "* correct.tmp  -> correct output"
+  printf " %s\t%s\n" "-c, --check-with  " "Check answers with the given program:"
+  printf " %s\t%s\n" "                  " "  * exit status is treated as:"
+  printf " %s\t%s\n" "                  " "    0 -> answer correct"
+  printf " %s\t%s\n" "                  " "    1 -> answer incorrect"
+  printf " %s\t%s\n" "                  " "    2 -> status unknown"
+  printf " %s\t%s\n" "                  " "  * out.tmp -> answer given"
+  printf " %s\t%s\n" "                  " "  * in.tmp  -> current input"
+  printf " %s\t%s\n" "                  " "  * correct.tmp  -> correct output"
+  printf " %s\t%s\n" "                  " "  ! program should decide for itself if missing correct output"
+  printf " %s\t%s\n" "                  " "    is treated as 'unknown' status"
+  printf " %s\t%s\n" "                  " "  ! messages from checking program are saved in 'chck_msg.txt'"
   printf " %s\t%s\n" "-i, --input-dir   " "Path to folder with input data (also sets output dir unless specified)"
   printf " %s\t%s\n" "-o, --output-dir  " "Path to folder with output"
   printf " %s\t%s\n" "-g, --generate-out" "Instead checking answers, generate them"
@@ -70,7 +76,7 @@ memory_limit="unlimited"
 task=""
 test_files="*.in"
 save_failed=false
-check_program=""
+checking_program=""
 
 while [ "$1" != "" ]; do
   case "$1" in
@@ -128,9 +134,18 @@ while [ "$1" != "" ]; do
     "--save-failed"|"-s")
       save_failed=true
       ;;
-    "--check-by"|"-c")
+    "--check-with"|"-c")
       shift
-      check_program="$1"
+      checking_program="$1"
+      "$checking_program" > /dev/null 2>&1
+      if [ $? = 127 ]; then
+        if [ ! -f "$checking_program" ]; then
+          exit_error "Checking program does not exist"
+        fi
+        checking_program="./$checking_program"
+        echo "$checking_program"
+      fi
+      printf "\n" > chck_msg.txt.txt
       ;;
     *)
       task="$1"
@@ -269,25 +284,31 @@ for test in "${tests[@]}"; do
     ((++count_mem))
     printf "${lightred}%s\n" "memory limit ($(($memory_limit/1024))MB) exceeded"
     save_failed_test "${test}" "MEM"
-  elif [ ! -f "${output_dir}${test}.out" ]; then
+  elif [[ "${checking_program}" = "" && ! -f "${output_dir}${test}.out" ]]; then
     ((++count_unknown))
     printf "${lightblue}%s\n" "unknown (${output_dir##\./}${test}.out does not exist)"
   else
-    if [ "${check_program}" == "" ]; then
+    if [ "${checking_program}" = "" ]; then
       diff <(ignore_multi_whitespaces "${output_dir}${test}.out") <(ignore_multi_whitespaces out.tmp) > /dev/null
     else
+      if [ -f ${output_dir}${test}.out ]; then
+        cat ${output_dir}${test}.out > correct.tmp
+      fi
       cat ${input_dir}${test}.in > in.tmp
-      cat ${output_dir}${test}.out > correct.tmp
-      ./$check_program
+      $checking_program >> check_msg.txt 2>&1
     fi
-    if [ $? = 0 ]; then 
+    exit_code=$?
+    if [ $exit_code -eq 0 ]; then 
       ((++count_ok))
       printf "${lightgreen}%s\n" "ok"
-    else
+    elif [ $exit_code -eq 1 ]; then
       ((++count_fail))
       ((++count_ans))
       printf "${lightred}%s\n" "wrong answer"
       save_failed_test "${test}" "ANS"
+    else
+      ((++count_unknown))
+      printf "${lightblue}%s\n" "unknown"
     fi
   fi
   printf "${normal}" 
