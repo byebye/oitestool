@@ -22,8 +22,8 @@ Pod zakończeniu działania zostanie wyświetlone podsumowanie:
 Aktualne możliwości skryptu:
 
 - testowanie nieskompilowanego programu - zostanie on skompilowany:
-  - jeśli istnieje - według pliku *Makefile*
-  - z flagami wedgług ustaleń Olimpiady: *-Wall -O2 -static -std=gnu++0x*
+  - według pliku *Makefile* - jeśli istnieje
+  - z flagami według ustaleń Olimpiady: *-Wall -O2 -static -std=gnu++0x*
 - testowanie skompilowanego programu
 - możliwość podania programu, który sam sprawdzi, czy odpowiedź jest poprawna
 - możliwość wskazania folderu z plikami wejściowymi (domyślnie: folder aktualny)
