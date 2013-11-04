@@ -15,8 +15,8 @@ Pod zakończeniu działania zostanie wyświetlone podsumowanie:
 - ilość dobrych odpowiedzi
 - ilość niezaliczonych odpowiedzi (z podziałem na powody niezaliczenia)
 - maksymalna pamięć wykorzystana podczas testowania
-- maksymalny czas działania na 1 teście
-- sumaryczny czas wykonywania obliczeń przez testowany program
+- maksymalny czas działania na pojedynczym teście
+- sumaryczny czas wykonywania obliczeń
 
 ### Wymagania
 System operacyjny: 
@@ -38,6 +38,7 @@ Aktualne możliwości skryptu:
 
 - testowanie nieskompilowanego programu - zostanie on skompilowany
 - testowanie skompilowanego programu
+- możliwość podania programu, który sam sprawdzi, czy odpowiedź jest poprawna
 - możliwość wskazania folderu z plikami wejściowymi (domyślnie: folder aktualny)
 - możliwość wskazania folderu z odpowiedziami (domyślnie: ten sam, co z plikami wejściowymi)
 - podanie nazw konkretnych testów zamiast całego folderu z testami (działają również regexpy)
