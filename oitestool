@@ -179,6 +179,9 @@ printf "%s\n" '{ min=$1/6000; s=$1%6000/100; ss=$1%100; printf("%d:%02d.%02d", m
 
 
 printf "${white}%s\n" "------------------ Testing $(basename $task) -------------------"
+if $save_failed; then
+  printf "Testing %s\n" "$(basename $task) [ $(date) ]" >> failed.txt
+fi
 for test in "${tests[@]}"; do
 
   test=${test%%.in}
@@ -212,12 +215,12 @@ for test in "${tests[@]}"; do
     "124")
       is_tle=true
       ;;
-    "130")
+    "130"|"2")
       ((++count_cancelled))
       printf "${lightred}%s\n" "cancelled (press Ctrl-| to interrupt whole script)" 
       continue
       ;;
-    "131")
+    "131"|"3")
       printf "${red}%s\n" "Script interrupted"
       rm *.tmp
       exit 131
