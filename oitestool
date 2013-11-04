@@ -16,6 +16,11 @@ help() {
   printf "%s\n"   "Options:"
   printf " %s\t%s\n" "-h, --help        " "Show this help"
   printf " %s\t%s\n" "-b, --binary      " "Test binary file without compiling source"
+  printf " %s\t%s\n" "-c, --check-by    " "Check answers by the given program:"
+  printf " %s\t%s\n" "                  " "* exit status = 0 -> answer correct"
+  printf " %s\t%s\n" "                  " "* out.tmp -> given answer"
+  printf " %s\t%s\n" "                  " "* in.tmp  -> current input"
+  printf " %s\t%s\n" "                  " "* correct.tmp  -> correct output"
   printf " %s\t%s\n" "-i, --input-dir   " "Path to folder with input data (also sets output dir unless specified)"
   printf " %s\t%s\n" "-o, --output-dir  " "Path to folder with output"
   printf " %s\t%s\n" "-g, --generate-out" "Instead checking answers, generate them"
@@ -65,6 +70,7 @@ memory_limit="unlimited"
 task=""
 test_files="*.in"
 save_failed=false
+check_program=""
 
 while [ "$1" != "" ]; do
   case "$1" in
@@ -121,6 +127,10 @@ while [ "$1" != "" ]; do
       ;;
     "--save-failed"|"-s")
       save_failed=true
+      ;;
+    "--check-by"|"-c")
+      shift
+      check_program="$1"
       ;;
     *)
       task="$1"
@@ -263,7 +273,13 @@ for test in "${tests[@]}"; do
     ((++count_unknown))
     printf "${lightblue}%s\n" "unknown (${output_dir##\./}${test}.out does not exist)"
   else
-    diff <(ignore_multi_whitespaces "${output_dir}${test}.out") <(ignore_multi_whitespaces out.tmp) > /dev/null
+    if [ "${check_program}" == "" ]; then
+      diff <(ignore_multi_whitespaces "${output_dir}${test}.out") <(ignore_multi_whitespaces out.tmp) > /dev/null
+    else
+      cat ${input_dir}${test}.in > in.tmp
+      cat ${output_dir}${test}.out > correct.tmp
+      ./$check_program
+    fi
     if [ $? = 0 ]; then 
       ((++count_ok))
       printf "${lightgreen}%s\n" "ok"
