@@ -18,6 +18,23 @@ Pod zakończeniu działania zostanie wyświetlone podsumowanie:
 - maksymalny czas działania na pojedynczym teście
 - sumaryczny czas wykonywania obliczeń
 
+### Opcje
+Aktualne możliwości skryptu:
+
+- testowanie nieskompilowanego programu - zostanie on skompilowany:
+  - jeśli istnieje - według pliku *Makefile*
+  - z flagami wedgług ustaleń Olimpiady: *-Wall -O2 -static -std=gnu++0x*
+- testowanie skompilowanego programu
+- możliwość podania programu, który sam sprawdzi, czy odpowiedź jest poprawna
+- możliwość wskazania folderu z plikami wejściowymi (domyślnie: folder aktualny)
+- możliwość wskazania folderu z odpowiedziami (domyślnie: ten sam, co z plikami wejściowymi)
+- podanie nazw konkretnych testów zamiast całego folderu z testami (działają również regexpy)
+- możliwość generowania odpowiedzi
+- ustalenie limitu czasowego
+- ustalenie limitu pamięci
+- możliwość zapisania nazw niezaliczonych testów do pliku
+- wyświetlenie pomocy zawierącej opis opcji
+
 ### Wymagania
 System operacyjny: 
 
@@ -32,18 +49,3 @@ Skrypt wykorzystuje do działania programy:
 Opcjonalnie - do ustawienia limitu czasowego:
 
 - timeout
-
-### Opcje
-Aktualne możliwości skryptu:
-
-- testowanie nieskompilowanego programu - zostanie on skompilowany
-- testowanie skompilowanego programu
-- możliwość podania programu, który sam sprawdzi, czy odpowiedź jest poprawna
-- możliwość wskazania folderu z plikami wejściowymi (domyślnie: folder aktualny)
-- możliwość wskazania folderu z odpowiedziami (domyślnie: ten sam, co z plikami wejściowymi)
-- podanie nazw konkretnych testów zamiast całego folderu z testami (działają również regexpy)
-- możliwość generowania odpowiedzi
-- ustalenie limitu czasowego
-- ustalenie limitu pamięci
-- możliwość zapisania nazw niezaliczonych testów do pliku
-- wyświetlenie pomocy zawierącej opis opcji
