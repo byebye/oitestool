@@ -32,8 +32,9 @@ help() {
   printf " %s\t%s\n" "-g, --generate-out" "Instead checking answers, generate them"
   printf " %s\t%s\n" "-t, --time-limit  " "Set time limit in seconds, default: unlimited"
   printf " %s\t%s\n" "-m, --memory-limit" "Set memory limit in MB, default: unlimited"
-  printf " %s\t%s\n" "-f, --test-files  " "Pass test files to be checked. (.in extension is required)"
-  printf " %s\t%s\n" "                  " "Format: \"test1 test2 test3 ...\", regex is also acceptable"
+  printf " %s\t%s\n" "-f, --test-files  " "Pass test files to be checked. ('.in' extension is required)"
+  printf " %s\t%s\n" "                  " "Format: \"test1.in test2.in test3.in\", \"test*.in\" (regex is acceptable)."
+  printf " %s\t%s\n" "                  " "! Note: path to folder with tests must be passed by '-i' argument"
   printf " %s\t%s\n" "-s, --save-failed " "Save names of failed tests to file 'failed.txt'"
 }
 
@@ -209,11 +210,13 @@ if $save_failed; then
 fi
 for test in "${tests[@]}"; do
 
-  test=${test%%.in}
-  test=$(basename $test)
+  test=$(basename $test .in)
 
-  printf "${white}%s" "${test} "
-  
+  if [ ! -f "${input_dir}${test}.in" ]; then
+    printf "${yellow}%s\n" " - test does not exist. Skipping..."
+    continue
+  fi
+
   /usr/bin/time -f "%E %M" -o time.tmp sh -c "${time_limit_cmd} ./${task} < ${input_dir}${test}.in > out.tmp 2> /dev/null" 2> /dev/null
   exit_code=$?
 
@@ -289,7 +292,7 @@ for test in "${tests[@]}"; do
     printf "${lightblue}%s\n" "unknown (${output_dir##\./}${test}.out does not exist)"
   else
     if [ "${checking_program}" = "" ]; then
-      diff <(ignore_multi_whitespaces "${output_dir}${test}.out") <(ignore_multi_whitespaces out.tmp) > /dev/null
+      diff --strip-trailing-cr <(ignore_multi_whitespaces "${output_dir}${test}.out") <(ignore_multi_whitespaces out.tmp) > /dev/null
     else
       if [ -f ${output_dir}${test}.out ]; then
         cat ${output_dir}${test}.out > correct.tmp
