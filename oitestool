@@ -14,28 +14,29 @@ yellow="\e[1;33m"
 help() {
   printf "%s\n" "$(basename $0) [OPTIONS] taskname"
   printf "%s\n"   "Options:"
-  printf " %s\t%s\n" "-h, --help        " "Show this help"
-  printf " %s\t%s\n" "-b, --binary      " "Test binary file without compiling source"
-  printf " %s\t%s\n" "-c, --check-with  " "Check answers with the given program:"
-  printf " %s\t%s\n" "                  " "  * exit status is treated as:"
-  printf " %s\t%s\n" "                  " "    0 -> answer correct"
-  printf " %s\t%s\n" "                  " "    1 -> answer incorrect"
-  printf " %s\t%s\n" "                  " "    2 -> status unknown"
-  printf " %s\t%s\n" "                  " "  * out.tmp -> answer given"
-  printf " %s\t%s\n" "                  " "  * in.tmp  -> current input"
-  printf " %s\t%s\n" "                  " "  * correct.tmp  -> correct output"
-  printf " %s\t%s\n" "                  " "  ! program should decide for itself if missing correct output"
-  printf " %s\t%s\n" "                  " "    is treated as 'unknown' status"
-  printf " %s\t%s\n" "                  " "  ! messages from checking program are saved in 'chck_msg.txt'"
-  printf " %s\t%s\n" "-i, --input-dir   " "Path to folder with input data (also sets output dir unless specified)"
-  printf " %s\t%s\n" "-o, --output-dir  " "Path to folder with output"
-  printf " %s\t%s\n" "-g, --generate-out" "Instead checking answers, generate them"
-  printf " %s\t%s\n" "-t, --time-limit  " "Set time limit in seconds, default: unlimited"
-  printf " %s\t%s\n" "-m, --memory-limit" "Set memory limit in MB, default: unlimited"
-  printf " %s\t%s\n" "-f, --test-files  " "Pass test files to be checked. ('.in' extension is required)"
-  printf " %s\t%s\n" "                  " "Format: \"test1.in test2.in test3.in\", \"test*.in\" (regex is acceptable)."
-  printf " %s\t%s\n" "                  " "! Note: path to folder with tests must be passed by '-i' argument"
-  printf " %s\t%s\n" "-s, --save-failed " "Save names of failed tests to file 'failed.txt'"
+  printf " %s\t%s\n" "-h, --help         " "Show this help"
+  printf " %s\t%s\n" "-b, --binary       " "Test binary file without compiling source"
+  printf " %s\t%s\n" "-c, --compile-only " "Compile source without testing"
+  printf " %s\t%s\n" "-p, --program-check" "Check answers with the given program:"
+  printf " %s\t%s\n" "                   " "  * exit status is treated as:"
+  printf " %s\t%s\n" "                   " "    0 -> answer correct"
+  printf " %s\t%s\n" "                   " "    1 -> answer incorrect"
+  printf " %s\t%s\n" "                   " "    2 -> status unknown"
+  printf " %s\t%s\n" "                   " "  * out.tmp -> answer given"
+  printf " %s\t%s\n" "                   " "  * in.tmp  -> current input"
+  printf " %s\t%s\n" "                   " "  * correct.tmp  -> correct output"
+  printf " %s\t%s\n" "                   " "  ! program should decide for itself if missing correct output"
+  printf " %s\t%s\n" "                   " "    is treated as 'unknown' status"
+  printf " %s\t%s\n" "                   " "  ! messages from checking program are saved in 'chck_msg.txt'"
+  printf " %s\t%s\n" "-i, --input-dir    " "Path to folder with input data (also sets output dir unless specified)"
+  printf " %s\t%s\n" "-o, --output-dir   " "Path to folder with output"
+  printf " %s\t%s\n" "-g, --generate-out " "Instead checking answers, generate them"
+  printf " %s\t%s\n" "-t, --time-limit   " "Set time limit in seconds, default: unlimited"
+  printf " %s\t%s\n" "-m, --memory-limit " "Set memory limit in MB, default: unlimited"
+  printf " %s\t%s\n" "-f, --test-files   " "Pass test files to be checked. ('.in' extension is required)"
+  printf " %s\t%s\n" "                   " "Format: \"test1.in test2.in test3.in\", \"test*.in\" (regex is acceptable)."
+  printf " %s\t%s\n" "                   " "! Note: path to folder with tests must be passed by '-i' argument"
+  printf " %s\t%s\n" "-s, --save-failed  " "Save names of failed tests to file 'failed.txt'"
 }
 
 exit_error() {
@@ -71,6 +72,7 @@ save_failed_test() {
 input_dir=""
 output_dir=""
 binary=false
+compile_only=false
 generate_out=false
 time_limit="unlimited"
 memory_limit="unlimited"
@@ -87,6 +89,9 @@ while [ "$1" != "" ]; do
       ;;
     "--binary"|"-b")
       binary=true
+      ;;
+    "--compile-only"|"-c")
+      compile_only=true
       ;;
     "--input-dir"|"-i")
       shift
@@ -135,7 +140,7 @@ while [ "$1" != "" ]; do
     "--save-failed"|"-s")
       save_failed=true
       ;;
-    "--check-with"|"-c")
+    "--program-check"|"-p")
       shift
       checking_program="$1"
       "$checking_program" > /dev/null 2>&1
@@ -172,11 +177,15 @@ if $binary ; then
 elif [ ! -f "${task}.cpp" ]; then
   exit_error "${task}.cpp - task source does not exist"
 elif [ ! -f Makefile ]; then
-  printf "%s\n" "Compilling ${task}.cpp source..."
+  printf "%s\n" "Compiling ${task}.cpp source..."
   g++ -Wall -O2 -static -std=gnu++0x ${task}.cpp -o ${task}
 else
-  printf "%s\n" "Compilling ${task}.cpp source with Makefile..."
+  printf "%s\n" "Compiling ${task}.cpp source with Makefile..."
   make ${task}
+fi
+
+if $compile_only ; then
+  exit 0
 fi
 
 maxmem=0
