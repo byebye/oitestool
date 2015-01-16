@@ -172,8 +172,10 @@ if $binary ; then
 elif [ ! -f "${task}.cpp" ]; then
   exit_error "${task}.cpp - task source does not exist"
 elif [ ! -f Makefile ]; then
+  printf "%s\n" "Compilling ${task}.cpp source..."
   g++ -Wall -O2 -static -std=gnu++0x ${task}.cpp -o ${task}
 else
+  printf "%s\n" "Compilling ${task}.cpp source with Makefile..."
   make ${task}
 fi
 
